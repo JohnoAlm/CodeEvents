@@ -5,6 +5,7 @@
 
     public class LectureDto
     {
+      
         public string Title { get; set; }
         public int Level { get; set; }
 

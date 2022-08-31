@@ -8,6 +8,8 @@ using Microsoft.EntityFrameworkCore;
 using CodeEvents.Api.Data;
 using CodeEvents.Api.Data.Repositories;
 using CodeEvents.Api.Core.Entities;
+using AutoMapper;
+using CodeEvents.Api.Core.Dto;
 
 namespace CodeEvents.Api.Controllers
 {
@@ -16,21 +18,57 @@ namespace CodeEvents.Api.Controllers
     public class CodeEventsController : ControllerBase
     {
         private readonly CodeEventsApiContext db;
+        private readonly IMapper mapper;
         private readonly UnitOfWork uow;
 
-        public CodeEventsController(CodeEventsApiContext context)
+        public CodeEventsController(CodeEventsApiContext context, IMapper mapper)
         {
             db = context;
-             uow = new UnitOfWork(db);
+            this.mapper = mapper;
+            uow = new UnitOfWork(db);
         }
 
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<CodeEvent>>> GetCodeEvent()
+        public async Task<ActionResult<IEnumerable<CodeEvent>>> GetCodeEvent(bool includeLectures)
         {
-            var events = await uow.CodeEventRepository.GetAsync();
-            return Ok(events);
+            var events = await uow.CodeEventRepository.GetAsync(includeLectures);
+            var dto = mapper.Map<IEnumerable<CodeEventDto>>(events);
+            return Ok(dto);
+        } 
+        
+        [HttpGet]
+        [Route("{name}")]
+        public async Task<ActionResult<IEnumerable<CodeEvent>>> GetCodeEvent(string name, bool includeLectures)
+        {
+
+            var codeevent = await uow.CodeEventRepository.GetAsync(name, includeLectures);
+
+            if (codeevent is null) return NotFound();
+
+            var dto = mapper.Map<CodeEventDto>(codeevent);
+
+            return Ok(dto);
         }
 
-   
+        [HttpPost]
+        public async Task<ActionResult<IEnumerable<CodeEvent>>> CreateCodeEvent(CodeEventDto dto)
+        {
+
+            if(await uow.CodeEventRepository.GetAsync(dto.Name) != null)
+            {
+                ModelState.AddModelError("Name", "Name is in use");
+                return BadRequest(ModelState);
+            }
+
+            var codeevent = mapper.Map<CodeEvent>(dto);
+            await uow.CodeEventRepository.AddAsync(codeevent);
+            await uow.CompleteAsync();
+
+
+            return CreatedAtAction(nameof(GetCodeEvent), new { name = codeevent.Name }, dto);
+           
+        }
+
+
     }
 }

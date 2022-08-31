@@ -8,6 +8,7 @@ namespace CodeEvents.Api.Core.Dto
 
     public class CodeEventDto
     {
+
         [Required]
         [StringLength(20)]
         public string Name { get; set; }
